@@ -1,0 +1,398 @@
+:root {
+  /* HSL Color System - Base Tokens */
+  --bg-h: 210;
+  --bg-s: 15%;
+  --bg-l-light: 98%;
+  --bg-l-dark: 8%;
+
+  --text-h: 210;
+  --text-s: 10%;
+  --text-l-light: 15%;
+  --text-l-dark: 85%;
+
+  /* Syntax Highlighting Colors - Minimal Palette */
+  --syn-key: hsl(210, 80%, 45%);
+  --syn-string: hsl(30, 90%, 35%);
+  --syn-number: hsl(200, 70%, 40%);
+  --syn-bool: hsl(350, 70%, 50%);
+  --syn-null: hsl(0, 0%, 50%);
+
+  /* UI Tokens */
+  --accent: hsl(210, 100%, 50%);
+  --border: hsla(210, 10%, 50%, 0.15);
+  --guide: hsla(210, 10%, 50%, 0.1);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-l: var(--bg-l-dark);
+    --text-l: var(--text-l-dark);
+    --syn-key: hsl(210, 80%, 65%);
+    --syn-string: hsl(30, 90%, 65%);
+    --syn-number: hsl(200, 70%, 70%);
+    --syn-bool: hsl(350, 70%, 75%);
+    --syn-null: hsl(0, 0%, 60%);
+    --border: hsla(210, 10%, 100%, 0.1);
+    --guide: hsla(210, 10%, 100%, 0.05);
+  }
+}
+
+body.light-theme {
+  --bg-l: var(--bg-l-light);
+  --text-l: var(--text-l-light);
+}
+
+body.dark-theme {
+  --bg-l: var(--bg-l-dark);
+  --text-l: var(--text-l-dark);
+}
+
+:root {
+  --bg: hsl(var(--bg-h), var(--bg-s), var(--bg-l, var(--bg-l-light)));
+  --text: hsl(var(--text-h), var(--text-s), var(--text-l, var(--text-l-light)));
+}
+
+/* Base Styles */
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  overscroll-behavior: none;
+}
+
+.mono {
+  font-family: "JetBrains Mono", "Fira Code", "Source Code Pro", monospace;
+  font-variant-ligatures: none;
+}
+
+/* Layout Grid */
+#devjson-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+.main-layout {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.view-pane {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.paste-zone {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+#v2-input {
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  background: hsla(210, 10%, 50%, 0.1);
+  color: var(--text);
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  resize: none;
+  transition: height 0.3s ease;
+}
+
+#v2-input:focus {
+  background: hsla(210, 10%, 50%, 0.15);
+}
+
+.diff-content .error-text {
+  font-size: 11px;
+  font-family: inherit;
+  font-style: italic;
+  opacity: 0.8;
+}
+.diff-active .view-pane {
+  display: none;
+}
+
+.diff-top-row {
+  display: flex;
+  flex: 1.2; /* Tops take more space */
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.diff-bottom-row {
+  flex: 1; /* Diff result pane */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: hsla(210, 10%, 50%, 0.05);
+}
+
+.diff-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.diff-pane:last-child {
+  border-right: none;
+}
+
+.pane-header {
+  padding: 8px 16px;
+  background: var(--guide);
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pane-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.tree-content, .diff-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  font-family: inherit;
+}
+
+.diff-delta {
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12px;
+}
+
+.no-diff {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  opacity: 0.5;
+  font-style: italic;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  height: 48px;
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.logo {
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--accent);
+}
+
+.badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--guide);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.toggle {
+  cursor: pointer;
+  display: inline-block;
+  width: 14px;
+  color: var(--guide);
+  font-size: 10px;
+  transition: transform 0.1s ease;
+  user-select: none;
+}
+
+.toggle.expanded {
+  color: var(--text);
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  border: 1px solid var(--guide);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  z-index: 10000;
+  animation: slideUp 0.3s ease;
+}
+
+.diff-line {
+  padding: 4px 12px;
+  border-left: 3px solid transparent;
+  margin-bottom: 2px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.diff-pane:focus {
+  outline: none;
+}
+
+#v2-pane:focus .pane-header {
+  background: hsla(210, 100%, 50%, 0.1);
+}
+
+.syn-string[contenteditable="true"]:focus,
+.syn-number[contenteditable="true"]:focus,
+.syn-boolean[contenteditable="true"]:focus,
+.syn-null[contenteditable="true"]:focus {
+  outline: none;
+  background: hsla(210, 100%, 50%, 0.15);
+  box-shadow: 0 0 0 1px var(--accent);
+  border-radius: 2px;
+  min-width: 20px;
+  display: inline-block;
+}
+
+.diff-line.added {
+  background: hsla(140, 60%, 50%, 0.2);
+  border-left-color: #2fb573;
+  color: #a6e22e;
+}
+
+.diff-line.deleted {
+  background: hsla(350, 60%, 50%, 0.2);
+  border-left-color: #f92672;
+  color: #f92672;
+}
+
+.diff-line.modified {
+  background: hsla(210, 60%, 50%, 0.2);
+  border-left-color: #66d9ef;
+  color: #66d9ef;
+}
+
+.diff-content pre {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+}
+
+/* Tree Styles */
+.node {
+  position: relative;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.node-content {
+  padding-left: 20px;
+  border-left: 1px solid var(--guide);
+  margin-left: 4px;
+}
+
+.node:hover > .syn-key {
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.syn-key { color: var(--syn-key); font-weight: 500; }
+.syn-string { color: var(--syn-string); }
+.syn-number { color: var(--syn-number); }
+.syn-boolean { color: var(--syn-bool); }
+.syn-null { color: var(--syn-null); }
+
+.toggle {
+  display: inline-block;
+  width: 16px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 10px;
+  color: var(--text);
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.toggle:hover { opacity: 1; }
+
+.bracket { color: var(--text); opacity: 0.8; }
+.comma { opacity: 0.5; }
+
+button {
+  background: var(--guide);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+button:hover {
+  background: var(--border);
+  border-color: var(--accent);
+}
+
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 300px;
+}
+
+#search-input {
+  background: var(--guide);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  width: 100%;
+  outline: none;
+}
+
+#search-input:focus {
+  border-color: var(--accent);
+  background: var(--bg);
+}
+
+#search-count {
+  font-size: 11px;
+  opacity: 0.6;
+  white-space: nowrap;
+}
+
+.search-match {
+  background: hsla(50, 100%, 50%, 0.2);
+}
