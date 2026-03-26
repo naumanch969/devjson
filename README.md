@@ -4,20 +4,20 @@ DevJSON is a high-performance, aesthetically pleasing browser extension that tra
 
 ![DevJSON Header](https://source.unsplash.com/featured/?code,data)
 
-## ✨ Features
+## Features
 
-- **🚀 Triple-Format Support**: Instantly detects and formats JSON, XML, and YAML data on any URL.
-- **🔍 Instant Semantic Search**: Real-time filtering and highlighting across keys and values.
-- **🎨 Premium Aesthetics**: Modern typography, balanced color palettes, and subtle animations. Dark mode by default.
-- **⚖️ Structural Diff Mode**: Upload a local file to compare against the current page and see structural changes.
-- **📂 Interactive Tree**: Collapsible nodes, indent guides, and depth indicators.
-- **🛠️ Developer Productivity**: 
+- **Triple-Format Support**: Instantly detects and formats JSON, XML, and YAML data on any URL.
+- **Instant Semantic Search**: Real-time filtering and highlighting across keys and values.
+- **Premium Aesthetics**: Modern typography, balanced color palettes, and subtle animations. Dark mode by default.
+- **Structural Diff Mode**: Upload a local file to compare against the current page and see structural changes.
+- **Interactive Tree**: Collapsible nodes, indent guides, and depth indicators.
+- **Developer Productivity**: 
   - **Right-click to Copy Path/Value**
   - **Raw Mode Toggle**
   - **Data Size Indicator**
-- **⚡ Performance First**: Optimized DOM-based rendering for large payloads.
+- **Performance First**: Optimized DOM-based rendering for large payloads.
 
-## 🛠 Installation
+## Installation
 
 ### From Source (Developer Mode)
 1. Clone the repository:
@@ -38,7 +38,7 @@ DevJSON is a high-performance, aesthetically pleasing browser extension that tra
    - Enable **Developer mode** (top right).
    - Click **Load unpacked** and select the `dist` folder.
 
-## 📖 Usage
+## Usage
 
 Simply visit any URL that returns JSON, XML, or YAML (e.g., an API endpoint). DevJSON will automatically detect the content and render the interactive explorer.
 
@@ -46,13 +46,13 @@ Simply visit any URL that returns JSON, XML, or YAML (e.g., an API endpoint). De
 - **Diff**: Click the "Diff" button and upload a file to see differences.
 - **Copy**: Right-click any key to copy its path, or any value to copy the JSON value.
 
-## 🏗 Tech Stack
+## Tech Stack
 
 - **Core**: Vanilla Javascript & CSS
 - **Bundler**: Vite + CRXJS
 - **Parsing**: `fast-xml-parser`, `js-yaml`
 - **Diffing**: `jsondiffpatch`
 
-## 📄 License
+## License
 
 MIT © [Your Name]
