@@ -6,37 +6,40 @@ import '../theme/core.css';
 
 let v1Data = null;
 let v2Data = null;
+let isDiffMode = false;
+let originalRaw = '';
+let originalType = '';
+let originalSize = '';
 
 const init = () => {
   const pre = document.querySelector('pre');
   const bodyText = pre ? pre.textContent : document.body.innerText;
-
   if (!bodyText || bodyText.length < 2) return;
 
   const { data, type, error } = parseData(bodyText);
-
   if (data && !error) {
     v1Data = data;
-    const size = (new Blob([bodyText]).size / 1024).toFixed(2);
-    const originalContent = bodyText;
+    originalRaw = bodyText;
+    originalType = type;
+    originalSize = (new Blob([bodyText]).size / 1024).toFixed(2);
+
     const uiRoot = document.createElement('div');
     uiRoot.id = 'devjson-root';
-
     document.body.innerHTML = '';
     document.body.appendChild(uiRoot);
 
-    renderUI(data, type, originalContent, size);
+    renderShell();
+    showNormalMode();
   }
 };
 
-const renderUI = (data, type, raw, size) => {
+const renderShell = () => {
   const root = document.getElementById('devjson-root');
-
   root.innerHTML = `
     <div class="top-bar">
       <div class="logo">DevJSON</div>
-      <div class="badge">${type.toUpperCase()}</div>
-      <div class="size-badge">${size} KB</div>
+      <div class="badge" id="type-badge">${originalType.toUpperCase()}</div>
+      <div class="size-badge">${originalSize} KB</div>
       <div class="search-wrapper">
         <input type="text" id="search-input" placeholder="Search keys or values..." />
         <span id="search-count"></span>
@@ -44,47 +47,63 @@ const renderUI = (data, type, raw, size) => {
       <div class="spacer" style="flex: 1"></div>
       <button id="toggle-raw">Raw</button>
       <button id="copy-all">Copy All</button>
-      <button id="diff-mode">Diff Mode</button>
+      <button id="toggle-view-mode">Diff Mode</button>
     </div>
-    <div id="main-view" class="main-layout">
-      <div id="primary-view" class="view-pane"></div>
-    </div>
+    <div id="main-view" class="main-layout"></div>
   `;
 
-  document.getElementById('primary-view').appendChild(renderNode(data));
-
   document.getElementById('toggle-raw').onclick = () => {
-    document.body.innerHTML = `<pre style="padding: 20px; background: #0b0e14; color: #a9b1d6; font-family: 'JetBrains Mono', monospace; white-space: pre-wrap; margin: 0; min-height: 100vh;">${raw}</pre>`;
+    const rawContent = v2Data ? JSON.stringify(v2Data, null, 2) : originalRaw;
+    document.body.innerHTML = `<pre style="padding: 20px; background: #0b0e14; color: #a9b1d6; font-family: 'JetBrains Mono', monospace; white-space: pre-wrap; margin: 0; min-height: 100vh;">${rawContent}</pre>`;
     const backBtn = document.createElement('button');
     backBtn.innerText = 'Back to DevJSON';
-    backBtn.style = 'position: fixed; top: 12px; right: 12px; z-index: 10000; padding: 10px 20px; background: #3d59a1; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.5);';
+    backBtn.style = 'position: fixed; top: 12px; right: 12px; z-index: 10000; padding: 10px 20px; background: #3d59a1; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: sans-serif;';
     backBtn.onclick = () => window.location.reload();
     document.body.appendChild(backBtn);
   };
 
   document.getElementById('copy-all').onclick = (e) => {
-    navigator.clipboard.writeText(raw).then(() => {
-      showToast('Document copied to clipboard');
+    const dataToCopy = v2Data || v1Data;
+    navigator.clipboard.writeText(JSON.stringify(dataToCopy, null, 2)).then(() => {
+      showToast('Copied JSON');
       e.target.innerText = 'Copied!';
       setTimeout(() => e.target.innerText = 'Copy All', 2000);
     });
   };
 
-  const searchInput = document.getElementById('search-input');
-  searchInput.oninput = (e) => performSearch(e.target.value.toLowerCase());
-
-  document.getElementById('diff-mode').onclick = () => {
-    activateTriplePane(data);
+  document.getElementById('toggle-view-mode').onclick = (e) => {
+    if (isDiffMode) {
+      showNormalMode();
+      e.target.innerText = 'Diff Mode';
+    } else {
+      showDiffMode();
+      e.target.innerText = 'Normal Mode';
+    }
   };
+
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) {
+    searchInput.oninput = (e) => performSearch(e.target.value.toLowerCase());
+  }
 };
 
-const activateTriplePane = (initialV1) => {
-  v1Data = initialV1;
-  v2Data = JSON.parse(JSON.stringify(initialV1)); // Start with a clone
-  
+const showNormalMode = () => {
+  isDiffMode = false;
+  const main = document.getElementById('main-view');
+  main.classList.remove('diff-active');
+  main.innerHTML = `<div id="primary-view" class="view-pane"></div>`;
+  const primary = document.getElementById('primary-view');
+  primary.innerHTML = '';
+  // Show V2 data if it exists (carry over edits), otherwise V1
+  primary.appendChild(renderNode(v2Data || v1Data));
+};
+
+const showDiffMode = () => {
+  isDiffMode = true;
+  if (!v2Data) v2Data = JSON.parse(JSON.stringify(v1Data));
+
   const main = document.getElementById('main-view');
   main.classList.add('diff-active');
-  
   main.innerHTML = `
     <div class="diff-top-row">
       <div class="diff-pane" id="v1-pane">
@@ -94,29 +113,28 @@ const activateTriplePane = (initialV1) => {
       <div class="diff-pane" id="v2-pane" tabindex="0">
         <div class="pane-header">
            <span>Live Editor (V2)</span>
-           <span style="font-size: 10px; opacity: 0.5; margin-left: auto;">[Click value to edit | Paste JSON anywhere]</span>
+           <span style="font-size: 10px; opacity: 0.5; margin-left: auto;">[Edit value / Paste JSON]</span>
         </div>
         <div id="v2-root" class="tree-content"></div>
       </div>
     </div>
     <div class="diff-bottom-row">
-      <div class="pane-header">Structural Changes (Git Style)</div>
-      <div id="diff-out" class="diff-content mono"></div>
+      <div class="pane-header">Unified Git Diff (Total Structure)</div>
+      <div id="diff-out" class="diff-content mono" style="font-size: 13px; font-family: 'JetBrains Mono', monospace; line-height: 1.4; white-space: pre; overflow: auto;"></div>
     </div>
   `;
 
   const v1Root = document.getElementById('v1-root');
   const v2Root = document.getElementById('v2-root');
   const diffOut = document.getElementById('diff-out');
-  const v2Pane = document.getElementById('v2-pane');
 
   const refreshDiff = () => {
     const diffResult = computeDiff(v1Data, v2Data);
-    if (!diffResult.hasChanges) {
-      diffOut.innerHTML = '<div class="no-diff">Files are structurally identical.</div>';
-    } else {
-      diffOut.innerHTML = renderDelta(diffResult.delta);
-    }
+    diffOut.innerHTML = '';
+    const container = document.createElement('div');
+    container.className = 'unified-diff-tree';
+    renderUnifiedTree(v1Data, v2Data, diffResult.delta, container);
+    diffOut.appendChild(container);
   };
 
   const onV2Change = (path, newVal) => {
@@ -128,24 +146,67 @@ const activateTriplePane = (initialV1) => {
   v2Root.appendChild(renderNode(v2Data, null, 0, '', onV2Change));
   refreshDiff();
 
-  // Handle Global Paste in V2 Pane
-  v2Pane.onpaste = (e) => {
+  document.getElementById('v2-pane').onpaste = (e) => {
     const text = e.clipboardData.getData('text/plain');
     if (!text) return;
-
     const { data, error } = parseData(text);
     if (!error) {
       v2Data = data;
       v2Root.innerHTML = '';
       v2Root.appendChild(renderNode(v2Data, null, 0, '', onV2Change));
       refreshDiff();
-      showToast('JSON Updated from Clipboard');
+      showToast('JSON Updated');
     } else {
       showToast('Invalid JSON in Clipboard', true);
     }
   };
+};
 
-  showToast('Live Tree Editor Enabled');
+// --- RENDER UNIFIED DIFF TREE ---
+
+const renderUnifiedTree = (v1, v2, delta, container, level = 0, key = null, isLast = true) => {
+  const indent = '  '.repeat(level);
+  const comma = isLast ? '' : ',';
+  const prefix = (k) => k !== null ? `"${k}": ` : '';
+  
+  const addLine = (txt, cls = '') => {
+    const line = document.createElement('div');
+    line.className = `diff-line ${cls}`;
+    line.textContent = txt; // Use textContent for safety
+    container.appendChild(line);
+  };
+
+  if (Array.isArray(delta)) {
+    if (delta.length === 1) { // Added
+      addLine(`+ ${indent}${prefix(key)}${JSON.stringify(delta[0], null, 2).split('\n').join('\n+ ' + indent)}${comma}`, 'added');
+    } else if (delta.length === 3 && delta[1] === 0 && delta[2] === 0) { // Deleted
+      addLine(`- ${indent}${prefix(key)}${JSON.stringify(delta[0], null, 2).split('\n').join('\n- ' + indent)}${comma}`, 'deleted');
+    } else if (delta.length === 2) { // Modified
+      addLine(`- ${indent}${prefix(key)}${JSON.stringify(delta[0])}${comma}`, 'deleted');
+      addLine(`+ ${indent}${prefix(key)}${JSON.stringify(delta[1])}${comma}`, 'added');
+    }
+    return;
+  }
+
+  const currentVal = delta ? (v2 !== undefined ? v2 : v1) : (v2 !== undefined ? v2 : v1);
+  const isObj = currentVal && typeof currentVal === 'object';
+  const isArr = Array.isArray(currentVal);
+
+  if (isObj) {
+    addLine(`  ${indent}${prefix(key)}${isArr ? '[' : '{'}`);
+    const keys = Array.from(new Set([
+      ...Object.keys(v1 || {}),
+      ...Object.keys(v2 || {})
+    ])).filter(k => k !== '_t');
+    keys.forEach((k, i) => {
+      const subDelta = delta ? delta[k] : undefined;
+      const last = i === keys.length - 1;
+      renderUnifiedTree(v1 ? v1[k] : undefined, v2 ? v2[k] : undefined, subDelta, container, level + 1, isArr ? null : k, last);
+    });
+    addLine(`  ${indent}${isArr ? ']' : '}'}${comma}`);
+  } else {
+    addLine(`  ${indent}${prefix(key)}${JSON.stringify(currentVal)}${comma}`);
+  }
 };
 
 const performSearch = (query) => {
@@ -164,7 +225,6 @@ const performSearch = (query) => {
   if (counter) counter.innerText = query ? `${count} matches` : '';
 };
 
-// HELPER: Update nested object by path (e.g. "user.profile[0].name")
 const updateNestedValue = (obj, path, value) => {
   if (!path) return;
   const parts = path.split(/\.|\[|\]/).filter(Boolean);
@@ -174,30 +234,6 @@ const updateNestedValue = (obj, path, value) => {
     current = current[key];
   }
   current[parts[parts.length - 1]] = value;
-};
-
-const renderDelta = (delta) => {
-  let html = '<div class="delta-summary">';
-  const process = (obj, path = '') => {
-    for (let key in obj) {
-      const val = obj[key];
-      const fullPath = path ? `${path}.${key}` : key;
-      if (Array.isArray(val)) {
-        if (val.length === 1) { 
-          html += `<div class="diff-line added">+ "${fullPath}": ${JSON.stringify(val[0])}</div>`;
-        } else if (val.length === 3 && val[1] === 0 && val[2] === 0) { 
-          html += `<div class="diff-line deleted">- "${fullPath}": ${JSON.stringify(val[0])}</div>`;
-        } else if (val.length === 2) { 
-          html += `<div class="diff-line modified">~ "${fullPath}": ${JSON.stringify(val[0])} → ${JSON.stringify(val[1])}</div>`;
-        }
-      } else if (typeof val === 'object' && val !== null) {
-        process(val, fullPath);
-      }
-    }
-  };
-  process(delta);
-  html += '</div>';
-  return html;
 };
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
