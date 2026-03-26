@@ -11,6 +11,10 @@ let originalRaw = '';
 let originalType = '';
 let originalSize = '';
 
+// Search state
+let searchMatches = [];
+let currentSearchIndex = -1;
+
 const init = () => {
   const pre = document.querySelector('pre');
   const bodyText = pre ? pre.textContent : document.body.innerText;
@@ -41,7 +45,11 @@ const renderShell = () => {
       <div class="badge" id="type-badge">${originalType.toUpperCase()}</div>
       <div class="size-badge">${originalSize} KB</div>
       <div class="search-wrapper">
-        <input type="text" id="search-input" placeholder="Search keys or values..." />
+        <input type="text" id="search-input" placeholder="Search..." />
+        <div class="search-nav">
+          <button id="search-prev" class="nav-btn" title="Previous match">◀</button>
+          <button id="search-next" class="nav-btn" title="Next match">▶</button>
+        </div>
         <span id="search-count"></span>
       </div>
       <div class="spacer" style="flex: 1"></div>
@@ -82,9 +90,16 @@ const renderShell = () => {
   };
 
   const searchInput = document.getElementById('search-input');
-  if (searchInput) {
-    searchInput.oninput = (e) => performSearch(e.target.value.toLowerCase());
-  }
+  searchInput.oninput = (e) => performSearch(e.target.value);
+  searchInput.onkeydown = (e) => {
+    if (e.key === 'Enter') {
+      if (e.shiftKey) navigateSearch(-1);
+      else navigateSearch(1);
+    }
+  };
+
+  document.getElementById('search-prev').onclick = () => navigateSearch(-1);
+  document.getElementById('search-next').onclick = () => navigateSearch(1);
 };
 
 const showNormalMode = () => {
@@ -93,9 +108,8 @@ const showNormalMode = () => {
   main.classList.remove('diff-active');
   main.innerHTML = `<div id="primary-view" class="view-pane"></div>`;
   const primary = document.getElementById('primary-view');
-  primary.innerHTML = '';
-  // Show V2 data if it exists (carry over edits), otherwise V1
   primary.appendChild(renderNode(v2Data || v1Data));
+  performSearch(document.getElementById('search-input')?.value || '');
 };
 
 const showDiffMode = () => {
@@ -172,7 +186,7 @@ const renderUnifiedTree = (v1, v2, delta, container, level = 0, key = null, isLa
   const addLine = (txt, cls = '') => {
     const line = document.createElement('div');
     line.className = `diff-line ${cls}`;
-    line.textContent = txt; // Use textContent for safety
+    line.textContent = txt;
     container.appendChild(line);
   };
 
@@ -210,19 +224,80 @@ const renderUnifiedTree = (v1, v2, delta, container, level = 0, key = null, isLa
 };
 
 const performSearch = (query) => {
-  const nodes = document.querySelectorAll('.node');
-  let count = 0;
-  nodes.forEach(node => {
-    const text = node.textContent.toLowerCase();
-    if (query && text.includes(query)) {
-      node.classList.add('search-match');
-      count++;
-    } else {
-      node.classList.remove('search-match');
+  searchMatches = [];
+  currentSearchIndex = -1;
+  const counter = document.getElementById('search-count');
+
+  // Clear previous matches and restore original text
+  document.querySelectorAll('.search-container').forEach(el => {
+    el.innerHTML = el.dataset.original || el.textContent;
+    el.classList.remove('search-container', 'search-match', 'search-active');
+  });
+  
+  document.querySelectorAll('.search-inner-match').forEach(el => el.replaceWith(el.textContent));
+
+  if (!query || query.length < 1) {
+    if (counter) counter.innerText = '';
+    return;
+  }
+
+  const qLower = query.toLowerCase();
+  const spans = document.querySelectorAll('.syn-key, .syn-string, .syn-number, .syn-boolean, .syn-null');
+  
+  spans.forEach(span => {
+    const text = span.textContent;
+    if (text.toLowerCase().includes(qLower)) {
+      span.classList.add('search-match', 'search-container');
+      if (!span.dataset.original) span.dataset.original = text;
+      
+      // Inject internal spans for precise text highlight
+      const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      span.innerHTML = text.replace(regex, '<span class="search-inner-match">$1</span>');
+      
+      const inners = span.querySelectorAll('.search-inner-match');
+      inners.forEach(inner => searchMatches.push(inner));
     }
   });
+
+  if (searchMatches.length > 0) {
+    currentSearchIndex = 0;
+    navigateSearch(0);
+  } else {
+    if (counter) counter.innerText = '0 matches';
+  }
+};
+
+const navigateSearch = (direction) => {
+  if (searchMatches.length === 0) return;
+
+  // Clear current active match
+  if (currentSearchIndex >= 0 && searchMatches[currentSearchIndex]) {
+    searchMatches[currentSearchIndex].classList.remove('search-active');
+    searchMatches[currentSearchIndex].parentElement.classList.remove('line-active');
+  }
+
+  currentSearchIndex = (currentSearchIndex + direction + searchMatches.length) % searchMatches.length;
+  const match = searchMatches[currentSearchIndex];
+  match.classList.add('search-active');
+  match.parentElement.classList.add('line-active');
+
+  // Ensure all parents are expanded
+  let parent = match.closest('.node-content');
+  while (parent) {
+    parent.style.display = 'block';
+    const toggle = parent.parentElement.querySelector('.toggle');
+    if (toggle) {
+      toggle.innerText = '▼';
+      toggle.classList.add('expanded');
+    }
+    parent = parent.parentElement.closest('.node-content');
+  }
+
+  // Scroll into view - instant behavior for speed as requested
+  match.scrollIntoView({ behavior: 'auto', block: 'center' });
+
   const counter = document.getElementById('search-count');
-  if (counter) counter.innerText = query ? `${count} matches` : '';
+  if (counter) counter.innerText = `${currentSearchIndex + 1} of ${searchMatches.length}`;
 };
 
 const updateNestedValue = (obj, path, value) => {
