@@ -61,6 +61,11 @@ export const renderNode = (value, key = null, level = 0, path = '', onChange = n
       valSpan.spellcheck = false;
       valSpan.onblur = () => {
         let newValText = valSpan.innerText.trim();
+        // Update dataset.original to prevent search from reverting it
+        if (valSpan.dataset.original !== undefined) {
+          valSpan.dataset.original = newValText;
+        }
+
         // Remove surrounding quotes if it's a string
         if (type === 'string' && newValText.startsWith('"') && newValText.endsWith('"')) {
           newValText = newValText.slice(1, -1);
