@@ -228,12 +228,16 @@ const performSearch = (query) => {
   currentSearchIndex = -1;
   const counter = document.getElementById('search-count');
 
-  // Clear previous matches and restore original text
-  document.querySelectorAll('.search-container').forEach(el => {
-    el.innerHTML = el.dataset.original || el.textContent;
-    el.classList.remove('search-container', 'search-match', 'search-active');
+  // Hard Reset: Find and clean EVERYTHING that might have search classes or injected HTML
+  const modifiedElements = document.querySelectorAll('.search-container, .line-active, [data-original]');
+  modifiedElements.forEach(el => {
+    if (el.dataset.original) {
+      el.innerHTML = el.dataset.original;
+    }
+    el.classList.remove('search-container', 'search-match', 'search-active', 'line-active');
   });
   
+  // Also catch any stray inner matches
   document.querySelectorAll('.search-inner-match').forEach(el => el.replaceWith(el.textContent));
 
   if (!query || query.length < 1) {
@@ -250,7 +254,6 @@ const performSearch = (query) => {
       span.classList.add('search-match', 'search-container');
       if (!span.dataset.original) span.dataset.original = text;
       
-      // Inject internal spans for precise text highlight
       const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
       span.innerHTML = text.replace(regex, '<span class="search-inner-match">$1</span>');
       
@@ -270,14 +273,14 @@ const performSearch = (query) => {
 const navigateSearch = (direction) => {
   if (searchMatches.length === 0) return;
 
-  // Clear current active match
-  if (currentSearchIndex >= 0 && searchMatches[currentSearchIndex]) {
-    searchMatches[currentSearchIndex].classList.remove('search-active');
-    searchMatches[currentSearchIndex].parentElement.classList.remove('line-active');
-  }
+  // Clear current active match properly from previous span
+  document.querySelectorAll('.search-active').forEach(el => el.classList.remove('search-active'));
+  document.querySelectorAll('.line-active').forEach(el => el.classList.remove('line-active'));
 
   currentSearchIndex = (currentSearchIndex + direction + searchMatches.length) % searchMatches.length;
   const match = searchMatches[currentSearchIndex];
+  if (!match) return;
+
   match.classList.add('search-active');
   match.parentElement.classList.add('line-active');
 
@@ -293,7 +296,6 @@ const navigateSearch = (direction) => {
     parent = parent.parentElement.closest('.node-content');
   }
 
-  // Scroll into view - instant behavior for speed as requested
   match.scrollIntoView({ behavior: 'auto', block: 'center' });
 
   const counter = document.getElementById('search-count');
