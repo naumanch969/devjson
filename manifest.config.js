@@ -4,7 +4,7 @@ import pkg from './package.json'
 export default defineManifest({
   manifest_version: 3,
   name: 'DevJSON — Premium Data Explorer',
-  description: 'Transform raw JSON, XML, and YAML into a beautiful, interactive, and searchable tree. Features structural diffing, instant search, and developer-centric copy actions.',
+  description: 'Premium explorer for JSON, XML, and YAML. Features structural diffing, instant search, and developer-centric copy actions.',
   version: pkg.version,
   icons: {
     16: 'public/icon-16.png',
@@ -16,7 +16,5 @@ export default defineManifest({
     js: ['src/content/main.js'],
     matches: ['https://*/*'],
   }],
-  permissions: [
-    'storage',
-  ],
+  permissions: [],
 })
