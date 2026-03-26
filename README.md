@@ -22,7 +22,7 @@ DevJSON is a high-performance, aesthetically pleasing browser extension that tra
 ### From Source (Developer Mode)
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/2devjson.git
+   git clone https://github.com/naumanch969/2devjson.git
    cd 2devjson
    ```
 2. Install dependencies:
@@ -55,4 +55,4 @@ Simply visit any URL that returns JSON, XML, or YAML (e.g., an API endpoint). De
 
 ## License
 
-MIT © [Your Name]
+MIT © Nauman Chaudhry
