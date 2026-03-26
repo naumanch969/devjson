@@ -114,7 +114,8 @@ const showNormalMode = () => {
 
 const showDiffMode = () => {
   isDiffMode = true;
-  if (!v2Data) v2Data = JSON.parse(JSON.stringify(v1Data));
+  // Initialize v2Data empty as requested
+  if (!v2Data) v2Data = null;
 
   const main = document.getElementById('main-view');
   main.classList.add('diff-active');
@@ -127,13 +128,20 @@ const showDiffMode = () => {
       <div class="diff-pane" id="v2-pane" tabindex="0">
         <div class="pane-header">
            <span>Live Editor (V2)</span>
-           <span style="font-size: 10px; opacity: 0.5; margin-left: auto;">[Edit value / Paste JSON]</span>
+           <span style="font-size: 10px; opacity: 0.5; margin-left: auto;">[Paste JSON here]</span>
         </div>
-        <div id="v2-root" class="tree-content"></div>
+        <div id="v2-root" class="tree-content">
+           <div class="v2-placeholder" style="padding: 40px; text-align: center; opacity: 0.3; font-style: italic;">
+              Click here and press Cmd+V to paste JSON
+           </div>
+        </div>
       </div>
     </div>
     <div class="diff-bottom-row">
-      <div class="pane-header">Unified Git Diff (Total Structure)</div>
+      <div class="pane-header">
+         <span>Unified Diff</span>
+         <span id="diff-stats" class="diff-stats-badge"></span>
+      </div>
       <div id="diff-out" class="diff-content mono" style="font-size: 13px; font-family: 'JetBrains Mono', monospace; line-height: 1.4; white-space: pre; overflow: auto;"></div>
     </div>
   `;
@@ -143,7 +151,23 @@ const showDiffMode = () => {
   const diffOut = document.getElementById('diff-out');
 
   const refreshDiff = () => {
+    const statsEl = document.getElementById('diff-stats');
+    if (!v2Data) {
+      diffOut.innerHTML = '<div style="padding: 20px; opacity: 0.5;">Waiting for V2 content...</div>';
+      if (statsEl) statsEl.innerHTML = '';
+      return;
+    }
     const diffResult = computeDiff(v1Data, v2Data);
+    
+    // Update stats
+    if (statsEl) {
+      const { added, deleted } = diffResult.stats || { added: 0, deleted: 0 };
+      statsEl.innerHTML = `
+        <span class="stat-added">+${added}</span>
+        <span class="stat-deleted">-${deleted}</span>
+      `;
+    }
+
     diffOut.innerHTML = '';
     const container = document.createElement('div');
     container.className = 'unified-diff-tree';
@@ -157,7 +181,10 @@ const showDiffMode = () => {
   };
 
   v1Root.appendChild(renderNode(v1Data));
-  v2Root.appendChild(renderNode(v2Data, null, 0, '', onV2Change));
+  if (v2Data) {
+    v2Root.innerHTML = '';
+    v2Root.appendChild(renderNode(v2Data, null, 0, '', onV2Change));
+  }
   refreshDiff();
 
   document.getElementById('v2-pane').onpaste = (e) => {
@@ -192,17 +219,21 @@ const renderUnifiedTree = (v1, v2, delta, container, level = 0, key = null, isLa
 
   if (Array.isArray(delta)) {
     if (delta.length === 1) { // Added
-      addLine(`+ ${indent}${prefix(key)}${JSON.stringify(delta[0], null, 2).split('\n').join('\n+ ' + indent)}${comma}`, 'added');
+      const valTxt = JSON.stringify(delta[0], null, 2).split('\n').join('\n+ ' + indent);
+      addLine(`+ ${indent}${prefix(key)}${valTxt}${comma}`, 'added');
     } else if (delta.length === 3 && delta[1] === 0 && delta[2] === 0) { // Deleted
-      addLine(`- ${indent}${prefix(key)}${JSON.stringify(delta[0], null, 2).split('\n').join('\n- ' + indent)}${comma}`, 'deleted');
+      const valTxt = JSON.stringify(delta[0], null, 2).split('\n').join('\n- ' + indent);
+      addLine(`- ${indent}${prefix(key)}${valTxt}${comma}`, 'deleted');
     } else if (delta.length === 2) { // Modified
-      addLine(`- ${indent}${prefix(key)}${JSON.stringify(delta[0])}${comma}`, 'deleted');
-      addLine(`+ ${indent}${prefix(key)}${JSON.stringify(delta[1])}${comma}`, 'added');
+      const v1Txt = JSON.stringify(delta[0], null, 2).split('\n').join('\n- ' + indent);
+      const v2Txt = JSON.stringify(delta[1], null, 2).split('\n').join('\n+ ' + indent);
+      addLine(`- ${indent}${prefix(key)}${v1Txt}${comma}`, 'deleted');
+      addLine(`+ ${indent}${prefix(key)}${v2Txt}${comma}`, 'added');
     }
     return;
   }
 
-  const currentVal = delta ? (v2 !== undefined ? v2 : v1) : (v2 !== undefined ? v2 : v1);
+  const currentVal = v2 !== undefined ? v2 : v1;
   const isObj = currentVal && typeof currentVal === 'object';
   const isArr = Array.isArray(currentVal);
 
@@ -213,7 +244,11 @@ const renderUnifiedTree = (v1, v2, delta, container, level = 0, key = null, isLa
       ...Object.keys(v2 || {})
     ])).filter(k => k !== '_t');
     keys.forEach((k, i) => {
-      const subDelta = delta ? delta[k] : undefined;
+      let subDelta = delta ? delta[k] : undefined;
+      // Array deletions in jsondiffpatch use '_index' keys
+      if (isArr && delta && delta['_' + k] !== undefined) {
+        subDelta = delta['_' + k];
+      }
       const last = i === keys.length - 1;
       renderUnifiedTree(v1 ? v1[k] : undefined, v2 ? v2[k] : undefined, subDelta, container, level + 1, isArr ? null : k, last);
     });
@@ -228,7 +263,6 @@ const performSearch = (query) => {
   currentSearchIndex = -1;
   const counter = document.getElementById('search-count');
 
-  // Hard Reset: Find and clean EVERYTHING that might have search classes or injected HTML
   const modifiedElements = document.querySelectorAll('.search-container, .line-active, [data-original]');
   modifiedElements.forEach(el => {
     if (el.dataset.original) {
@@ -237,7 +271,6 @@ const performSearch = (query) => {
     el.classList.remove('search-container', 'search-match', 'search-active', 'line-active');
   });
   
-  // Also catch any stray inner matches
   document.querySelectorAll('.search-inner-match').forEach(el => el.replaceWith(el.textContent));
 
   if (!query || query.length < 1) {
@@ -273,7 +306,6 @@ const performSearch = (query) => {
 const navigateSearch = (direction) => {
   if (searchMatches.length === 0) return;
 
-  // Clear current active match properly from previous span
   document.querySelectorAll('.search-active').forEach(el => el.classList.remove('search-active'));
   document.querySelectorAll('.line-active').forEach(el => el.classList.remove('line-active'));
 
@@ -284,7 +316,6 @@ const navigateSearch = (direction) => {
   match.classList.add('search-active');
   match.parentElement.classList.add('line-active');
 
-  // Ensure all parents are expanded
   let parent = match.closest('.node-content');
   while (parent) {
     parent.style.display = 'block';

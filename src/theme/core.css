@@ -441,3 +441,21 @@ button:hover {
   border-radius: 2px;
   outline: none;
 }
+
+.diff-stats-badge {
+  display: flex;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.stat-added {
+  color: #7ee787;
+}
+
+.stat-deleted {
+  color: #ffa198;
+}
+
